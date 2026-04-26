@@ -30,9 +30,9 @@ Banks and financial institutions receive hundreds of thousands of consumer compl
 
 This project trains four deep learning NLP architectures and selects the best one to automatically classify complaints into **9 financial product categories** — reducing manual effort and improving response time.
 
-**Key highlights:**
+**Best Model:** CNN-BiLSTM Hybrid — **80.43% test accuracy**
 - ~45,000 balanced complaint samples across 9 categories
-- CNN-BiLSTM hybrid achieves **~89% classification accuracy**
+- CNN-BiLSTM hybrid achieves **81% accuracy and 0.81 macro F1-score**
 - Full Flask web app with Xano database integration
 - Deployed live on **AWS EC2** with Gunicorn + tmux
 
@@ -43,6 +43,20 @@ This project trains four deep learning NLP architectures and selects the best on
 The app accepts a customer complaint in natural language, predicts the financial product category, and displays confidence scores for the top 3 predictions. Each submission is assigned a unique **6-digit Complaint ID** and logged to a cloud database automatically.
 
 **Low-confidence guard:** If the model confidence is below 20%, the app politely asks the user to provide more details rather than returning a potentially incorrect classification.
+
+### Screenshots
+
+**Complaint Input Form**
+
+![App Input Form](screenshot_input.png)
+
+> Naruto-themed UI — "Bank of Hiddenleaf" — with the Hidden Leaf Village as the background. Built with plain HTML + CSS, no JavaScript framework.
+
+**Prediction Result**
+
+![Prediction Result](screenshot_result.png)
+
+> The model classified this complaint as **Student Loan** with **98.0% confidence**. Each category has a representative avatar image and an animated confidence bar.
 
 ---
 
@@ -99,7 +113,7 @@ Four deep learning architectures were trained and compared:
 | 1 | SimpleRNN | Baseline; struggles with long sequences (vanishing gradient) |
 | 2 | LSTM | Better long-range memory than SimpleRNN |
 | 3 | BiLSTM | Reads sequences in both directions; improved context |
-| 4 | **CNN-BiLSTM (Hybrid)** ✅ | **Best performer — ~81% accuracy** |
+| 4 | **CNN-BiLSTM (Hybrid)** ✅ | **Best performer — ~89% accuracy** |
 
 ### Final Model: CNN-BiLSTM Hybrid
 
@@ -123,12 +137,14 @@ Embedding(vocab_size, 150)
 
 ## Results
 
-| Model | Validation Accuracy |
+| Model | Test Accuracy |
 |---|---|
-| SimpleRNN | ~45% |
-| LSTM | ~77% |
-| BiLSTM | ~79% |
-| **CNN-BiLSTM** | **~81%** |
+| SimpleRNN | 47.26% |
+| LSTM | 76.51% |
+| Bi-LSTM | 78.97% |
+| **CNN-BiLSTM ★** | **80.43%** |
+
+> **Training config:** Loss — Categorical Cross-Entropy · Optimizer — Adam · Early Stopping — `val_loss` patience=5 · All scores measured on a held-out 20% test split
 
 All 4 models are saved as `.h5` files. The tokenizer and label encoder are serialized as `.pkl` files for deployment.
 
@@ -239,23 +255,122 @@ Expected response:
 
 ## Deployment
 
-The app is deployed on **AWS EC2 (Ubuntu, T3 instance)** using Gunicorn as the production WSGI server.
+The app is deployed on **AWS EC2 (Ubuntu Server, T3 instance)** — accessible from anywhere via public IP.
 
-### Production deployment steps
+### Step-by-Step EC2 Deployment Guide
+
+#### 1. Launch EC2 Instance (AWS Console)
+
+- Go to **AWS EC2 → Launch Instance**
+- Choose **Ubuntu Server 22.04 LTS** (free tier eligible)
+- Instance type: **t3.micro** (or t3.small for better performance under load)
+- Create or select a **key pair** (`.pem` file) — save this, you need it for SSH
+- Under **Security Group**, open inbound rules:
+  - Port **22** (SSH) — your IP
+  - Port **5000** (Flask/Gunicorn) — `0.0.0.0/0` (or restrict to your IP)
+- Launch the instance and note the **Public IPv4 address**
+
+#### 2. Transfer Project Files via WinSCP (Windows → EC2)
+
+- Download and open **[WinSCP](https://winscp.net/)**
+- New session → Protocol: **SFTP**
+- Hostname: your EC2 **Public IPv4**
+- Username: `ubuntu`
+- Under **Advanced → SSH → Authentication**, load your `.pem` key file
+- Connect and drag your project folder into `/home/ubuntu/`
+
+> Make sure to include: `app.py`, `templates/`, `static/`, `model_4_hybrid_cnn_lstm(new).h5`, `tokenizer.pkl`, `label_encoder.pkl`
+
+#### 3. SSH into the Instance via PuTTY (Windows)
+
+- Download **[PuTTY](https://putty.org/)** and **PuTTYgen**
+- Open PuTTYgen → Load your `.pem` file → Save as `.ppk`
+- Open PuTTY:
+  - Host: `ubuntu@<your-ec2-public-ip>`
+  - Under **Connection → SSH → Auth**, browse to your `.ppk` file
+  - Click **Open** to connect
+
+#### 4. Set Up Python Environment on EC2
 
 ```bash
-# Install Gunicorn
-pip install gunicorn
+# Update system packages
+sudo apt update && sudo apt upgrade -y
 
-# Start app in a persistent tmux session
-tmux new -s complaint-app
-gunicorn -w 2 -b 0.0.0.0:5000 app:app
+# Install pip and venv
+sudo apt install python3-pip python3-venv -y
 
-# Detach from tmux (app keeps running after SSH closes)
-# Ctrl+B then D
+# Create and activate a virtual environment
+python3 -m venv venv
+source venv/bin/activate
+
+# Install all dependencies
+pip install flask tensorflow keras nltk numpy requests scikit-learn gunicorn
+
+# Download NLTK stopwords
+python3 -c "import nltk; nltk.download('stopwords')"
 ```
 
-File transfer to EC2 was done via **WinSCP** (SFTP), and SSH access via **PuTTY** using the `.pem` key pair.
+#### 5. Test the App Manually (Optional)
+
+```bash
+cd /home/ubuntu/your-project-folder
+python3 app.py
+```
+
+Visit `http://<your-ec2-public-ip>:5000` in your browser to verify it works.
+
+#### 6. Deploy with Gunicorn + tmux (Production)
+
+```bash
+# Install tmux if not already present
+sudo apt install tmux -y
+
+# Create a persistent tmux session
+tmux new -s complaint-app
+
+# Inside the tmux session — activate venv and start Gunicorn
+source venv/bin/activate
+gunicorn -w 2 -b 0.0.0.0:5000 app:app
+
+# Detach from tmux WITHOUT killing the process
+# Press: Ctrl+B, then D
+```
+
+The app now keeps running even after you close PuTTY / disconnect SSH.
+
+#### Useful tmux commands
+
+```bash
+tmux attach -t complaint-app   # Re-attach to the running session
+tmux ls                        # List all active sessions
+tmux kill-session -t complaint-app  # Stop the app
+```
+
+#### 7. Restarting After EC2 Reboot
+
+```bash
+# Re-attach and restart Gunicorn
+tmux new -s complaint-app
+source venv/bin/activate
+gunicorn -w 2 -b 0.0.0.0:5000 app:app
+```
+
+> **Tip:** For a fully automatic startup on reboot, you can configure a `systemd` service instead of tmux — but tmux is simpler for development and small-scale deployments.
+
+### Deployment Architecture Summary
+
+```
+User Browser
+    │  HTTP
+    ▼
+AWS EC2 (Ubuntu T3)
+    └── tmux session
+         └── Gunicorn (WSGI, 2 workers)
+              └── Flask app (app.py)
+                   ├── Keras CNN-BiLSTM model (.h5)
+                   ├── Tokenizer (.pkl)
+                   └── Xano REST API (complaint logging)
+```
 
 ---
 
