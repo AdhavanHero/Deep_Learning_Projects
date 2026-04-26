@@ -1,0 +1,9 @@
+Flask
+Werkzeug
+numpy
+tensorflow
+scikit-learn
+nltk
+waitress
+requests
+gunicorn
