@@ -99,7 +99,7 @@ Four deep learning architectures were trained and compared:
 | 1 | SimpleRNN | Baseline; struggles with long sequences (vanishing gradient) |
 | 2 | LSTM | Better long-range memory than SimpleRNN |
 | 3 | BiLSTM | Reads sequences in both directions; improved context |
-| 4 | **CNN-BiLSTM (Hybrid)** ✅ | **Best performer — ~89% accuracy** |
+| 4 | **CNN-BiLSTM (Hybrid)** ✅ | **Best performer — ~81% accuracy** |
 
 ### Final Model: CNN-BiLSTM Hybrid
 
@@ -125,10 +125,10 @@ Embedding(vocab_size, 150)
 
 | Model | Validation Accuracy |
 |---|---|
-| SimpleRNN | ~75% |
-| LSTM | ~82% |
-| BiLSTM | ~85% |
-| **CNN-BiLSTM** | **~89%** |
+| SimpleRNN | ~45% |
+| LSTM | ~77% |
+| BiLSTM | ~79% |
+| **CNN-BiLSTM** | **~81%** |
 
 All 4 models are saved as `.h5` files. The tokenizer and label encoder are serialized as `.pkl` files for deployment.
 
