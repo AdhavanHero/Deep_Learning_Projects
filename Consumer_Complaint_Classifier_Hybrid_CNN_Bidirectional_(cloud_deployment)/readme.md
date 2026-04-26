@@ -394,6 +394,12 @@ Fallback handling: if the Xano API is unreachable (5s timeout), the app catches 
 
 > **Note:** The Xano endpoint URL in `app.py` has been masked for public release.
 
+### Xano Database — Live Records
+
+![Xano Database](screenshot_xano_db.png)
+
+> Real complaint records stored in the `bank_complaints` Xano table. Each row captures the complaint ID, customer name, account number, predicted category, complaint description, and timestamp — all logged automatically on every prediction.
+
 ---
 
 ## Acknowledgements
